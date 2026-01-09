@@ -1,13 +1,6 @@
 package bapale.rioc.unizon
 
-import bapale.rioc.unizon.screen.CounterScreen
-import bapale.rioc.unizon.screen.DatabaseScreen
-import bapale.rioc.unizon.screen.DogScreen
-import bapale.rioc.unizon.screen.FavoritesScreen
-import bapale.rioc.unizon.screen.InputScreen
-import bapale.rioc.unizon.screen.JokeScreen
-import bapale.rioc.unizon.screen.ListIntScreen
-import bapale.rioc.unizon.screen.ListPeopleScreen
+import bapale.rioc.unizon.screen.ProductsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,10 +35,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialisation BDD
-        val database = AppDatabase.getDatabase(this)
-        val jokeDao = database.jokeDao()
-
         setContent {
             var screen by remember { mutableIntStateOf(1) }
 
@@ -53,14 +42,7 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             val navItems = listOf(
-                "Counter",
-                "Input",
-                "Integer list",
-                "People list",
-                "User data",
-                "Jokes",
-                "Dogs images",
-                "Favorite jokes")
+                "Products")
 
             ModalNavigationDrawer(
                 drawerState = drawerState,
@@ -99,14 +81,7 @@ class MainActivity : ComponentActivity() {
                 ) { padding ->
                     Box(Modifier.padding(padding)) {
                         when (screen) {
-                            1 -> CounterScreen()
-                            2 -> InputScreen()
-                            3 -> ListIntScreen()
-                            4 -> ListPeopleScreen()
-                            5 -> DatabaseScreen()
-                            6 -> JokeScreen(jokeDao)
-                            7 -> DogScreen()
-                            8 -> FavoritesScreen(jokeDao)
+                            1 -> ProductsScreen()
                         }
                     }
                 }
