@@ -1,4 +1,4 @@
-package bapale.rioc.unizon.ui.theme
+package bapale.rioc.unizon.theme
 
 import androidx.compose.ui.graphics.Color
 
