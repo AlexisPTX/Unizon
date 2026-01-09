@@ -4,39 +4,34 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 
-data class Joke(
+data class Product(
     val id: Int,
-    val type: String,
-    val setup: String,
-    val punchline: String
+    val title: String,
+    val price: Double,
+    val description: String,
+    val category: String,
+    val image: String
 )
 
-data class DogResponse(
-    val message: String,
-    val status: String
-)
+interface FakeStoreApiService {
+    @GET("/products")
+    suspend fun getProducts(): List<Product>
 
-interface JokeApiService {
-    @GET("random_joke")
-    suspend fun getRandomJoke(): Joke
-}
+    @GET("/products/categories")
+    suspend fun getCategories(): List<String>
 
-interface DogApiService {
-    @GET("breeds/image/random")
-    suspend fun getRandomDog(): DogResponse
+    @GET("/products/category/{category}")
+    suspend fun getProductsByCategory(
+        @retrofit2.http.Path("category") category: String
+    ): List<Product>
 }
 
 object RetrofitInstance {
-    private val jokeRetrofit = Retrofit.Builder()
-        .baseUrl("https://official-joke-api.appspot.com/")
+
+    private val fakeStoreRetrofit = Retrofit.Builder()
+        .baseUrl("https://fakestoreapi.com/")
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    private val dogRetrofit = Retrofit.Builder()
-        .baseUrl("https://dog.ceo/api/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    val jokeService: JokeApiService = jokeRetrofit.create(JokeApiService::class.java)
-    val dogService: DogApiService = dogRetrofit.create(DogApiService::class.java)
+    val fakeStoreService: FakeStoreApiService = fakeStoreRetrofit.create(FakeStoreApiService::class.java)
 }
