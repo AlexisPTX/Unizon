@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
@@ -31,7 +30,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.IconButton
@@ -58,10 +56,10 @@ import bapale.rioc.unizon.api.Product
 import bapale.rioc.unizon.viewmodel.CartViewModel
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
-import androidx.compose.material.Icon
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarHalf
 import androidx.compose.material.icons.outlined.StarOutline
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +88,7 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
                         category
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 val errorMessage = "Error loading products"
                 error = errorMessage
                 snackbarHostState.showSnackbar(errorMessage)
@@ -111,7 +109,7 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
         scope.launch {
             try {
                 categories = RetrofitInstance.fakeStoreService.getCategories()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 snackbarHostState.showSnackbar("Error loading categories")
             }
         }
@@ -175,7 +173,7 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
                                 product = product,
                                 quantityInCart = quantityInCart,
                                 onAddToCart = { cartViewModel.addToCart(product) },
-                                onRemoveFromCart = { cartViewModel.decreaseQuantity(product),
+                                onRemoveFromCart = { cartViewModel.decreaseQuantity(product) },
                                 onClick = {selectedProduct = product}
                             )
                         }
@@ -372,7 +370,7 @@ fun RatingStars(
                 }
                 i == filledStars + 1 && hasHalfStar -> {
                     Icon(
-                        imageVector = Icons.Filled.StarHalf,
+                        imageVector = Icons.AutoMirrored.Filled.StarHalf,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )

@@ -18,12 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import bapale.rioc.unizon.data.CartItem
+import androidx.navigation.NavController
 import bapale.rioc.unizon.viewmodel.CartViewModel
 import coil.compose.AsyncImage
 import java.text.DecimalFormat
 
 @Composable
-fun CartScreen(cartViewModel: CartViewModel) {
+fun CartScreen(cartViewModel: CartViewModel, navController: NavController) {
     val cartItems by cartViewModel.cartItems.collectAsState()
     val totalPrice by cartViewModel.cartTotalPrice.collectAsState()
     val totalItemCount by cartViewModel.cartItemCount.collectAsState()
@@ -53,21 +54,30 @@ fun CartScreen(cartViewModel: CartViewModel) {
                 }
             }
             Surface(shadowElevation = 8.dp) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val articleText = if (totalItemCount > 1) "products" else "product"
-                    Text("Total ($totalItemCount $articleText):", style = MaterialTheme.typography.headlineSmall)
-                    Text(
-                        "${priceFormat.format(totalPrice)} €",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val articleText = if (totalItemCount > 1) "products" else "product"
+                        Text("Total ($totalItemCount $articleText):", style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            "${priceFormat.format(totalPrice)} €",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { navController.navigate("checkout") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = cartItems.isNotEmpty()
+                    ) {
+                        Text("VALIDATE PURCHASE", style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }

@@ -2,10 +2,13 @@ package bapale.rioc.unizon.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.room.withTransaction
 import androidx.lifecycle.viewModelScope
 import bapale.rioc.unizon.api.Product
 import bapale.rioc.unizon.data.AppDatabase
 import bapale.rioc.unizon.data.CartItem
+import bapale.rioc.unizon.data.Order
+import bapale.rioc.unizon.data.OrderItem
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -14,7 +17,9 @@ import kotlinx.coroutines.launch
 
 class CartViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val cartDao = AppDatabase.getDatabase(application).cartDao()
+    private val db = AppDatabase.getDatabase(application)
+    private val cartDao = db.cartDao()
+    private val orderDao = db.orderDao()
 
     val cartItems: StateFlow<List<CartItem>> = cartDao.getAllItems()
         .stateIn(
@@ -82,6 +87,35 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
     fun removeItemFromCart(item: CartItem) {
         viewModelScope.launch {
             cartDao.deleteItem(item)
+        }
+    }
+
+    fun placeOrder(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            val currentCartItems = cartItems.value
+            if (currentCartItems.isEmpty()) return@launch
+
+            val newOrder = Order(
+                timestamp = System.currentTimeMillis(),
+                totalPrice = currentCartItems.sumOf { it.price * it.quantity }
+            )
+
+            db.withTransaction {
+                val orderId = orderDao.insertOrder(newOrder)
+                val orderItems = currentCartItems.map {
+                    OrderItem(
+                        parentOrderId = orderId,
+                        productId = it.productId,
+                        title = it.title,
+                        price = it.price,
+                        image = it.image,
+                        quantity = it.quantity
+                    )
+                }
+                orderDao.insertOrderItems(orderItems)
+                cartDao.clearCart()
+            }
+            onSuccess()
         }
     }
 }
