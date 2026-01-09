@@ -72,4 +72,9 @@ dependencies {
 
     //AsyncImage
     implementation(libs.coil.compose)
+
+    // Icons
+    implementation("androidx.compose.material:material:1.10.0")
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
 }

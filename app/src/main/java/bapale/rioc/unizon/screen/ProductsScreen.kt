@@ -1,25 +1,34 @@
 package bapale.rioc.unizon.screen
 
+import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import bapale.rioc.unizon.api.RetrofitInstance
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -40,6 +49,11 @@ import androidx.compose.ui.unit.dp
 import bapale.rioc.unizon.api.Product
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarHalf
+import androidx.compose.material.icons.outlined.StarOutline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +65,7 @@ fun ProductsScreen() {
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
     fun loadProducts(category: String? = selectedCategory) {
         scope.launch {
@@ -75,6 +90,13 @@ fun ProductsScreen() {
         }
     }
 
+    LaunchedEffect(selectedProduct) {
+        Log.d(
+            "ProductsScreen",
+            "selectedProduct = ${selectedProduct?.title ?: "null"}"
+        )
+    }
+
     fun loadCategories() {
         scope.launch {
             try {
@@ -90,11 +112,21 @@ fun ProductsScreen() {
         loadProducts()
     }
 
+    // If a product is selected
+    if (selectedProduct != null)
+    {
+        ProductDetailScreen(
+            product = selectedProduct!!,
+            onBack = { selectedProduct = null }
+        )
+        return
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { loadProducts() }) {
-                Text("Rafraîchir")
+                Text("Refresh")
             }
         }
     ) { padding ->
@@ -118,7 +150,7 @@ fun ProductsScreen() {
                         Text(text = error!!, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = { loadProducts() }) {
-                            Text("Réessayer")
+                            Text("Try again")
                         }
                     }
                 } else {
@@ -128,7 +160,10 @@ fun ProductsScreen() {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(products) { product ->
-                            ProductItem(product = product)
+                            ProductItem(
+                                product = product,
+                                onClick = {selectedProduct = product}
+                            )
                         }
                     }
                 }
@@ -167,15 +202,21 @@ fun CategoriesRow(
 }
 
 @Composable
-fun ProductItem(product: Product, modifier: Modifier = Modifier) {
+fun ProductItem(
+    product: Product,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable{ onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             AsyncImage(
                 model = product.image,
-                contentDescription = "Image du produit ${product.title}",
+                contentDescription = "Product image ${product.title}",
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
@@ -195,5 +236,116 @@ fun ProductItem(product: Product, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductDetailScreen(
+    product: Product,
+    onBack: () -> Unit
+)
+{
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {Text("Product detail")},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Localized description")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding) // ✅ IMPORTANT
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            AsyncImage(
+                model = product.image,
+                contentDescription = "Image du produit ${product.title}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(product.title, style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            RatingStars(
+                rate = product.rating.rate,
+                count = product.rating.count,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "${product.price} €",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Catégorie : ${product.category}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "ID : ${product.id}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Description", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(product.description, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+fun RatingStars(
+    rate: Double,
+    count: Int,
+    modifier: Modifier
+) {
+    val filledStars = rate.toInt()
+    val hasHalfStar = (rate - filledStars) >= 0.5
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 1..5)
+        {
+            when {
+                i <= filledStars -> {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                i == filledStars + 1 && hasHalfStar -> {
+                    Icon(
+                        imageVector = Icons.Filled.StarHalf,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                else -> {
+                    Icon(
+                        imageVector = Icons.Outlined.StarOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "${"%.1f".format(rate)} ($count)",
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
