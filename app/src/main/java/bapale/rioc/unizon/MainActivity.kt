@@ -1,6 +1,8 @@
 package bapale.rioc.unizon
 
 import bapale.rioc.unizon.screen.CartScreen
+import bapale.rioc.unizon.screen.CheckoutScreen
+import bapale.rioc.unizon.screen.OrderHistoryScreen
 import bapale.rioc.unizon.screen.ProductsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,6 +41,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import bapale.rioc.unizon.viewmodel.CartViewModel
+import bapale.rioc.unizon.viewmodel.OrderHistoryViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -59,6 +62,8 @@ class MainActivity : ComponentActivity() {
             val topBarTitle = when (currentRoute) {
                 "products" -> "Products"
                 "cart" -> "Cart"
+                "checkout" -> "Checkout"
+                "order_history" -> "Order History"
                 else -> "Unizon Store"
             }
  
@@ -84,6 +89,15 @@ class MainActivity : ComponentActivity() {
                             selected = currentRoute == "cart",
                             onClick = {
                                 navController.navigate("cart") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                                scope.launch { drawerState.close() }
+                            },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("Order History") },
+                            selected = currentRoute == "order_history",
+                            onClick = {
+                                navController.navigate("order_history") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
                                 scope.launch { drawerState.close() }
                             },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -121,7 +135,16 @@ class MainActivity : ComponentActivity() {
                             ProductsScreen(cartViewModel = cartViewModel)
                         }
                         composable("cart") {
-                            CartScreen(cartViewModel = cartViewModel)
+                            CartScreen(cartViewModel = cartViewModel, navController = navController)
+                        }
+                        composable("checkout") {
+                            CheckoutScreen(cartViewModel = cartViewModel, navController = navController)
+                        }
+                        composable("order_history") {
+                            // ViewModel is created inside the screen with default factory
+                            // or we can create it here and pass it.
+                            // For simplicity, let's let the screen create it.
+                            OrderHistoryScreen()
                         }
                     }
                 }
