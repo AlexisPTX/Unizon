@@ -4,13 +4,18 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 
+data class Rating(
+    val rate: Double,
+    val count: Int
+)
 data class Product(
     val id: Int,
     val title: String,
     val price: Double,
     val description: String,
     val category: String,
-    val image: String
+    val image: String,
+    val rating: Rating
 )
 
 interface FakeStoreApiService {
