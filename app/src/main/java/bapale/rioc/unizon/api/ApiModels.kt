@@ -16,6 +16,14 @@ data class Product(
 interface FakeStoreApiService {
     @GET("/products")
     suspend fun getProducts(): List<Product>
+
+    @GET("/products/categories")
+    suspend fun getCategories(): List<String>
+
+    @GET("/products/category/{category}")
+    suspend fun getProductsByCategory(
+        @retrofit2.http.Path("category") category: String
+    ): List<Product>
 }
 
 object RetrofitInstance {

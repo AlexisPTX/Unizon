@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -39,20 +41,30 @@ import bapale.rioc.unizon.api.Product
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsScreen() {
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var categories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun loadProducts() {
+    fun loadProducts(category: String? = selectedCategory) {
         scope.launch {
             isLoading = true
             error = null
             try {
-                products = RetrofitInstance.fakeStoreService.getProducts()
+                // Charger les produits en fonction de la catégorie sélectionnée
+                products = if (category == null) {
+                    RetrofitInstance.fakeStoreService.getProducts()
+                } else {
+                    RetrofitInstance.fakeStoreService.getProductsByCategory(
+                        category
+                    )
+                }
             } catch (e: Exception) {
                 val errorMessage = "Erreur de chargement des produits"
                 error = errorMessage
@@ -63,37 +75,93 @@ fun ProductsScreen() {
         }
     }
 
+    fun loadCategories() {
+        scope.launch {
+            try {
+                categories = RetrofitInstance.fakeStoreService.getCategories()
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("Erreur de chargement des catégories")
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
+        loadCategories()
         loadProducts()
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            Button(onClick = { loadProducts() }) {
+            FloatingActionButton(onClick = { loadProducts() }) {
                 Text("Rafraîchir")
             }
         }
     ) { padding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isLoading && products.isEmpty()) {
-                CircularProgressIndicator()
-            } else if (error != null && products.isEmpty()) {
-                Text(text = error!!, color = MaterialTheme.colorScheme.error)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(products) { product ->
-                        ProductItem(product = product)
+        Column(modifier = Modifier.padding(padding)) {
+            CategoriesRow(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategorySelected = { category ->
+                    selectedCategory = category
+                    loadProducts(category)
+                }
+            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isLoading && products.isEmpty()) {
+                    CircularProgressIndicator()
+                } else if (error != null && products.isEmpty()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { loadProducts() }) {
+                            Text("Réessayer")
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(products) { product ->
+                            ProductItem(product = product)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoriesRow(
+    categories: List<String>,
+    selectedCategory: String?,
+    onCategorySelected: (String?) -> Unit
+) {
+    // La liste complète inclut une option pour tout afficher
+    val displayCategories = listOf("all") + categories
+
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(displayCategories) { category ->
+            val isSelected = (category == "all" && selectedCategory == null) || category == selectedCategory
+            FilterChip(
+                selected = isSelected,
+                onClick = {
+                    val newSelection = if (category == "all") null else category
+                    onCategorySelected(newSelection)
+                },
+                label = { Text(text = category) }
+            )
         }
     }
 }
