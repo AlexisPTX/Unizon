@@ -3,6 +3,7 @@ package bapale.rioc.unizon
 import bapale.rioc.unizon.screen.CartScreen
 import bapale.rioc.unizon.screen.CheckoutScreen
 import bapale.rioc.unizon.screen.OrderHistoryScreen
+import bapale.rioc.unizon.screen.ProductDetailScreen
 import bapale.rioc.unizon.screen.ProductsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,112 +40,127 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import androidx.navigation.compose.rememberNavController
+import bapale.rioc.unizon.ui.theme.UnizonTheme
 import bapale.rioc.unizon.viewmodel.CartViewModel
 import bapale.rioc.unizon.viewmodel.OrderHistoryViewModel
 import kotlinx.coroutines.launch
+import androidx.navigation.NavType
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
- 
+
         setContent {
-            val navController = rememberNavController()
-            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-            val scope = rememberCoroutineScope()
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute = navBackStackEntry?.destination?.route
- 
-            val cartViewModel: CartViewModel = viewModel()
-            val cartItemsCount by cartViewModel.cartItemCount.collectAsState()
- 
-            val topBarTitle = when (currentRoute) {
-                "products" -> "Products"
-                "cart" -> "Cart"
-                "checkout" -> "Checkout"
-                "order_history" -> "Order History"
-                else -> "Unizon Store"
-            }
- 
-            ModalNavigationDrawer(
-                drawerState = drawerState,
-                drawerContent = {
-                    ModalDrawerSheet {
-                        Spacer(Modifier.height(16.dp))
-                        Text("Unizon Store", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
-                        HorizontalDivider()
- 
-                        NavigationDrawerItem(
-                            label = { Text("Products") },
-                            selected = currentRoute == "products",
-                            onClick = {
-                                navController.navigate("products") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                        NavigationDrawerItem(
-                            label = { Text("Cart") },
-                            selected = currentRoute == "cart",
-                            onClick = {
-                                navController.navigate("cart") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                        NavigationDrawerItem(
-                            label = { Text("Order History") },
-                            selected = currentRoute == "order_history",
-                            onClick = {
-                                navController.navigate("order_history") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                    }
+            UnizonTheme {
+                val navController = rememberNavController()
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+
+                val cartViewModel: CartViewModel = viewModel()
+                val cartItemsCount by cartViewModel.cartItemCount.collectAsState()
+
+                val topBarTitle = when {
+                    currentRoute == "products" -> "Products"
+                    currentRoute == "cart" -> "Cart"
+                    currentRoute == "checkout" -> "Checkout"
+                    currentRoute == "order_history" -> "Order History"
+                    currentRoute?.startsWith("product_detail") == true -> "Product Detail"
+                    else -> "Unizon Store"
                 }
-            ) {
-                Scaffold(
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            title = { Text(topBarTitle) },
-                            navigationIcon = {
-                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Default.Menu, "Menu")
-                                }
-                            },
-                            actions = {
-                                IconButton(onClick = { navController.navigate("cart") }) {
-                                    BadgedBox(badge = {
-                                        if (cartItemsCount > 0) Badge { Text("$cartItemsCount") }
-                                    }) {
-                                        Icon(Icons.Default.ShoppingCart, "Cart")
+
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet (drawerContainerColor = MaterialTheme.colorScheme.background) {
+                            Spacer(Modifier.height(16.dp))
+                            Text("Unizon Store", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
+                            HorizontalDivider()
+
+                            NavigationDrawerItem(
+                                label = { Text("Products") },
+                                selected = currentRoute == "products",
+                                onClick = {
+                                    navController.navigate("products") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                            NavigationDrawerItem(
+                                label = { Text("Cart") },
+                                selected = currentRoute == "cart",
+                                onClick = {
+                                    navController.navigate("cart") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                            NavigationDrawerItem(
+                                label = { Text("Order History") },
+                                selected = currentRoute == "order_history",
+                                onClick = {
+                                    navController.navigate("order_history") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                        }
+                    }
+                ) {
+                    Scaffold(
+                        topBar = {
+                            CenterAlignedTopAppBar(
+                                title = { Text(topBarTitle) },
+                                navigationIcon = {
+                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                        Icon(Icons.Default.Menu, "Menu")
+                                    }
+                                },
+                                actions = {
+                                    IconButton(onClick = { navController.navigate("cart") }) {
+                                        BadgedBox(badge = {
+                                            if (cartItemsCount > 0) Badge { Text("$cartItemsCount") }
+                                        }) {
+                                            Icon(Icons.Default.ShoppingCart, "Cart")
+                                        }
                                     }
                                 }
+                            )
+                        }
+                    ) { padding ->
+                        NavHost(
+                            navController = navController,
+                            startDestination = "products",
+                            modifier = Modifier.padding(padding).fillMaxSize()
+                        ) {
+                            composable("products") {
+                                ProductsScreen(cartViewModel = cartViewModel, navController = navController)
                             }
-                        )
-                    }
-                ) { padding ->
-                    NavHost(
-                        navController = navController,
-                        startDestination = "products",
-                        modifier = Modifier.padding(padding).fillMaxSize()
-                    ) {
-                        composable("products") {
-                            ProductsScreen(cartViewModel = cartViewModel)
-                        }
-                        composable("cart") {
-                            CartScreen(cartViewModel = cartViewModel, navController = navController)
-                        }
-                        composable("checkout") {
-                            CheckoutScreen(cartViewModel = cartViewModel, navController = navController)
-                        }
-                        composable("order_history") {
-                            // ViewModel is created inside the screen with default factory
-                            // or we can create it here and pass it.
-                            // For simplicity, let's let the screen create it.
-                            OrderHistoryScreen()
+                            composable("cart") {
+                                CartScreen(cartViewModel = cartViewModel, navController = navController)
+                            }
+                            composable("checkout") {
+                                CheckoutScreen(cartViewModel = cartViewModel, navController = navController)
+                            }
+                            composable("order_history") {
+                                OrderHistoryScreen()
+                            }
+                            composable(
+                                "product_detail/{productId}",
+                                arguments = listOf(navArgument("productId") { type = NavType.IntType })
+                            ) { backStackEntry ->
+                                val productId = backStackEntry.arguments?.getInt("productId")
+                                if (productId != null) {
+                                    ProductDetailScreen(
+                                        productId = productId,
+                                        onBack = { navController.popBackStack() }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

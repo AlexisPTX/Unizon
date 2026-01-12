@@ -29,6 +29,9 @@ interface FakeStoreApiService {
     suspend fun getProductsByCategory(
         @retrofit2.http.Path("category") category: String
     ): List<Product>
+
+    @GET("/products/{id}")
+    suspend fun getProductById(@retrofit2.http.Path("id") id: Int): Product
 }
 
 object RetrofitInstance {
