@@ -49,7 +49,8 @@ fun OrderHistoryItem(orderWithItems: OrderWithItems) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
