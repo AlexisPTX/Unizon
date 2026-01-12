@@ -31,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,12 +63,20 @@ import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 
+enum class SortOption(val displayName: String) {
+    NONE("Default"),
+    PRICE_ASC("Price: Low to High"),
+    PRICE_DESC("Price: High to Low"),
+    RATING_DESC("Rating: High to Low")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsScreen(cartViewModel: CartViewModel) {
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var categories by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var sortOption by remember { mutableStateOf(SortOption.NONE) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -96,6 +105,17 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
                 isLoading = false
             }
         }
+    }
+
+    val displayedProducts by remember(products, sortOption) {
+        mutableStateOf(
+            when (sortOption) {
+                SortOption.PRICE_ASC -> products.sortedBy { it.price }
+                SortOption.PRICE_DESC -> products.sortedByDescending { it.price }
+                SortOption.RATING_DESC -> products.sortedByDescending { it.rating.rate }
+                SortOption.NONE -> products
+            }
+        )
     }
 
     LaunchedEffect(selectedProduct) {
@@ -134,7 +154,7 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { loadProducts() }) {
-                Text("Refresh")
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
             }
         }
     ) { padding ->
@@ -146,6 +166,10 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
                     selectedCategory = category
                     loadProducts(category)
                 }
+            )
+            SortControls(
+                selectedOption = sortOption,
+                onOptionSelected = { sortOption = it }
             )
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -167,7 +191,7 @@ fun ProductsScreen(cartViewModel: CartViewModel) {
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(products) { product ->
+                        items(displayedProducts) { product ->
                             val quantityInCart = cartItems.find { it.productId == product.id }?.quantity ?: 0
                             ProductItem(
                                 product = product,
@@ -207,7 +231,27 @@ fun CategoriesRow(
                     val newSelection = if (category == "all") null else category
                     onCategorySelected(newSelection)
                 },
-                label = { Text(text = category) }
+                label = { Text(text = if (category == "all") "All" else category.replaceFirstChar { it.uppercaseChar() }) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SortControls(
+    selectedOption: SortOption,
+    onOptionSelected: (SortOption) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(SortOption.values()) { option ->
+            FilterChip(
+                selected = selectedOption == option,
+                onClick = { onOptionSelected(option) },
+                label = { Text(option.displayName) }
             )
         }
     }
@@ -244,6 +288,11 @@ fun ProductItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.height(48.dp) // Hauteur fixe pour l'alignement
+                )
+                RatingStars(
+                    rate = product.rating.rate,
+                    count = product.rating.count,
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
