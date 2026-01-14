@@ -31,6 +31,11 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = GreenLighter,
     onSurfaceVariant = GreenDark,
 
+    surfaceContainer = GreenLighter,
+    surfaceContainerLow = GreenLighter,
+    surfaceContainerHigh = GreenLighter,
+    surfaceContainerHighest = GreenLighter,
+
     outline = GreenDark.copy(alpha = 0.5f),
     outlineVariant = GreenLight,
 

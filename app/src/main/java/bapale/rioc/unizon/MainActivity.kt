@@ -9,33 +9,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -44,9 +31,23 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.rememberNavController
 import bapale.rioc.unizon.ui.theme.UnizonTheme
 import bapale.rioc.unizon.viewmodel.CartViewModel
-import bapale.rioc.unizon.viewmodel.OrderHistoryViewModel
-import kotlinx.coroutines.launch
 import androidx.navigation.NavType
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import bapale.rioc.unizon.screen.FavoritesScreen
+import bapale.rioc.unizon.viewmodel.FavoritesViewModel
+
+sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
+    object Products : BottomNavItem("products", Icons.Default.Storefront, "Products")
+    object Favorites : BottomNavItem("favorites", Icons.Default.Favorite, "Favorites")
+    object History : BottomNavItem("order_history", Icons.Default.History, "History")
+}
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -56,89 +57,92 @@ class MainActivity : ComponentActivity() {
         setContent {
             UnizonTheme {
                 val navController = rememberNavController()
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val cartViewModel: CartViewModel = viewModel()
+                val favoritesViewModel: FavoritesViewModel = viewModel()
                 val cartItemsCount by cartViewModel.cartItemCount.collectAsState()
+                val favoritesCount by favoritesViewModel.favoritesCount.collectAsState()
 
                 val topBarTitle = when {
                     currentRoute == "products" -> "Products"
                     currentRoute == "cart" -> "Cart"
                     currentRoute == "checkout" -> "Checkout"
                     currentRoute == "order_history" -> "Order History"
+                    currentRoute == "favorites" -> "Favorites"
                     currentRoute?.startsWith("product_detail") == true -> "Product Detail"
                     else -> "Unizon Store"
                 }
 
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        ModalDrawerSheet (drawerContainerColor = MaterialTheme.colorScheme.background) {
-                            Spacer(Modifier.height(16.dp))
-                            Text("Unizon Store", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
-                            HorizontalDivider()
+                val bottomNavItems = listOf(
+                    BottomNavItem.Products,
+                    BottomNavItem.Favorites,
+                    BottomNavItem.History
+                )
 
-                            NavigationDrawerItem(
-                                label = { Text("Products") },
-                                selected = currentRoute == "products",
-                                onClick = {
-                                    navController.navigate("products") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
-                            NavigationDrawerItem(
-                                label = { Text("Cart") },
-                                selected = currentRoute == "cart",
-                                onClick = {
-                                    navController.navigate("cart") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
-                            NavigationDrawerItem(
-                                label = { Text("Order History") },
-                                selected = currentRoute == "order_history",
-                                onClick = {
-                                    navController.navigate("order_history") { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
-                                    scope.launch { drawerState.close() }
-                                },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
-                        }
-                    }
-                ) {
-                    Scaffold(
-                        topBar = {
-                            CenterAlignedTopAppBar(
-                                title = { Text(topBarTitle) },
-                                navigationIcon = {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Default.Menu, "Menu")
-                                    }
-                                },
-                                actions = {
-                                    IconButton(onClick = { navController.navigate("cart") }) {
-                                        BadgedBox(badge = {
-                                            if (cartItemsCount > 0) Badge { Text("$cartItemsCount") }
-                                        }) {
-                                            Icon(Icons.Default.ShoppingCart, "Cart")
-                                        }
+                Scaffold(
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = { Text(topBarTitle) },
+                            navigationIcon = {
+                                val isTopLevel = bottomNavItems.any { it.route == currentRoute }
+                                if (!isTopLevel && navController.previousBackStackEntry != null) {
+                                    IconButton(onClick = { navController.navigateUp() }) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                                     }
                                 }
-                            )
+                            },
+                            actions = {
+                                IconButton(onClick = { navController.navigate("cart") }) {
+                                    BadgedBox(badge = {
+                                        if (cartItemsCount > 0) Badge { Text("$cartItemsCount") }
+                                    }) {
+                                        Icon(Icons.Default.ShoppingCart, "Cart")
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        NavigationBar {
+                            bottomNavItems.forEach { item ->
+                                val isSelected = currentRoute == item.route
+                                NavigationBarItem(
+                                    selected = isSelected,
+                                    onClick = {
+                                        navController.navigate(item.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = {
+                                        if (item.route == "favorites") {
+                                            BadgedBox(badge = {
+                                                if (favoritesCount > 0) Badge { Text("$favoritesCount") }
+                                            }) {
+                                                Icon(item.icon, contentDescription = item.label)
+                                            }
+                                        } else {
+                                            Icon(item.icon, contentDescription = item.label)
+                                        }
+                                    },
+                                    label = { Text(item.label) }
+                                )
+                            }
                         }
-                    ) { padding ->
+                    }
+                ) { padding ->
                         NavHost(
                             navController = navController,
                             startDestination = "products",
                             modifier = Modifier.padding(padding).fillMaxSize()
                         ) {
                             composable("products") {
-                                ProductsScreen(cartViewModel = cartViewModel, navController = navController)
+                                ProductsScreen(cartViewModel = cartViewModel, favoritesViewModel = favoritesViewModel, navController = navController)
                             }
                             composable("cart") {
                                 CartScreen(cartViewModel = cartViewModel, navController = navController)
@@ -149,6 +153,9 @@ class MainActivity : ComponentActivity() {
                             composable("order_history") {
                                 OrderHistoryScreen()
                             }
+                            composable("favorites") {
+                                FavoritesScreen(navController = navController, cartViewModel = cartViewModel, favoritesViewModel = favoritesViewModel)
+                            }
                             composable(
                                 "product_detail/{productId}",
                                 arguments = listOf(navArgument("productId") { type = NavType.IntType })
@@ -157,7 +164,6 @@ class MainActivity : ComponentActivity() {
                                 if (productId != null) {
                                     ProductDetailScreen(
                                         productId = productId,
-                                        onBack = { navController.popBackStack() }
                                     )
                                 }
                             }
@@ -165,6 +171,5 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
     }
 }

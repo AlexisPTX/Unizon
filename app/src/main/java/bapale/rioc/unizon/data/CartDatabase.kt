@@ -41,6 +41,24 @@ interface CartDao {
     suspend fun clearCart()
 }
 
+// --- Favorites Entities ---
+@Entity(tableName = "favorite_items")
+data class FavoriteItem(
+    @PrimaryKey val productId: Int
+)
+
+@Dao
+interface FavoriteDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun addFavorite(favorite: FavoriteItem)
+
+    @Query("DELETE FROM favorite_items WHERE productId = :productId")
+    suspend fun removeFavorite(productId: Int)
+
+    @Query("SELECT * FROM favorite_items")
+    fun getAllFavorites(): Flow<List<FavoriteItem>>
+}
+
 // --- Order Entities ---
 @Entity(tableName = "orders")
 data class Order(
@@ -83,10 +101,11 @@ interface OrderDao {
 }
 
 
-@Database(entities = [CartItem::class, Order::class, OrderItem::class], version = 2, exportSchema = false)
+@Database(entities = [CartItem::class, Order::class, OrderItem::class, FavoriteItem::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun cartDao(): CartDao
     abstract fun orderDao(): OrderDao
+    abstract fun favoriteDao(): FavoriteDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
