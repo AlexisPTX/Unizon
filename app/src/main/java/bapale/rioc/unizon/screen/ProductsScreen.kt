@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -55,13 +54,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import bapale.rioc.unizon.api.Product
+import bapale.rioc.unizon.viewmodel.FavoritesViewModel
 import bapale.rioc.unizon.viewmodel.CartViewModel
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -76,7 +77,7 @@ enum class SortOption(val displayName: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsScreen(cartViewModel: CartViewModel, navController: NavController) {
+fun ProductsScreen(cartViewModel: CartViewModel, favoritesViewModel: FavoritesViewModel, navController: NavController) {
     var products by remember { mutableStateOf<List<Product>>(emptyList()) }
     var categories by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
@@ -86,6 +87,7 @@ fun ProductsScreen(cartViewModel: CartViewModel, navController: NavController) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val cartItems by cartViewModel.cartItems.collectAsState()
+    val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
     val listState = rememberLazyListState()
 
     fun loadProducts(category: String? = selectedCategory) {
@@ -147,46 +149,16 @@ fun ProductsScreen(cartViewModel: CartViewModel, navController: NavController) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            Text("Categories", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp))
-            CategoriesRow(
+        Column(modifier = Modifier.padding(padding)) { // The main column for the screen
+            FilterBar(
                 categories = categories,
                 selectedCategory = selectedCategory,
                 onCategorySelected = { category ->
                     selectedCategory = category
                     loadProducts(category)
-                }
+                },
+                onSortSelected = { sortOption = it }
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp), // Reduced vertical padding
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("All Products", style = MaterialTheme.typography.titleMedium)
-
-                var menuExpanded by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort products")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        SortOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.displayName) },
-                                onClick = {
-                                    sortOption = option
-                                    menuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
             PullToRefreshBox(
                 isRefreshing = isLoading,
                 onRefresh = { loadProducts() },
@@ -213,9 +185,12 @@ fun ProductsScreen(cartViewModel: CartViewModel, navController: NavController) {
                     } else {
                         items(displayedProducts, key = { it.id }) { product ->
                             val quantityInCart = cartItems.find { it.productId == product.id }?.quantity ?: 0
+                            val isFavorite = favoriteIds.contains(product.id)
                             ProductItem(
                                 product = product,
                                 quantityInCart = quantityInCart,
+                                isFavorite = isFavorite,
+                                onToggleFavorite = { favoritesViewModel.toggleFavorite(product) },
                                 onAddToCart = { cartViewModel.addToCart(product) },
                                 onRemoveFromCart = { cartViewModel.decreaseQuantity(product) },
                                 onClick = { navController.navigate("product_detail/${product.id}") }
@@ -230,28 +205,48 @@ fun ProductsScreen(cartViewModel: CartViewModel, navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoriesRow(
+fun FilterBar(
     categories: List<String>,
     selectedCategory: String?,
-    onCategorySelected: (String?) -> Unit
+    onCategorySelected: (String?) -> Unit,
+    onSortSelected: (SortOption) -> Unit
 ) {
-    val displayCategories = listOf("all") + categories
-
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        items(displayCategories) { category ->
-            val isSelected = (category == "all" && selectedCategory == null) || category == selectedCategory
-            FilterChip(
-                selected = isSelected,
-                onClick = {
-                    val newSelection = if (category == "all") null else category
-                    onCategorySelected(newSelection)
-                },
-                label = { Text(text = if (category == "all") "All" else category.replaceFirstChar { it.uppercaseChar() }) }
-            )
+        // Categories Chips
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val displayCategories = listOf("all") + categories
+            items(displayCategories) { category ->
+                val isSelected = (category == "all" && selectedCategory == null) || category == selectedCategory
+                FilterChip(
+                    selected = isSelected,
+                    onClick = {
+                        val newSelection = if (category == "all") null else category
+                        onCategorySelected(newSelection)
+                    },
+                    label = { Text(text = if (category == "all") "All" else category.replaceFirstChar { it.uppercaseChar() }) }
+                )
+            }
+        }
+
+        // Sort Button
+        var menuExpanded by remember { mutableStateOf(false) }
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort products")
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                SortOption.entries.forEach { option ->
+                    DropdownMenuItem(text = { Text(option.displayName) }, onClick = { onSortSelected(option); menuExpanded = false })
+                }
+            }
         }
     }
 }
@@ -260,6 +255,8 @@ fun CategoriesRow(
 fun ProductItem(
     product: Product,
     quantityInCart: Int,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onAddToCart: () -> Unit,
     onRemoveFromCart: () -> Unit,
     onClick: () -> Unit,
@@ -269,19 +266,30 @@ fun ProductItem(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            AsyncImage(
-                model = product.image,
-                contentDescription = "Image of product ${product.title}",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentScale = ContentScale.Fit
-            )
+            Box {
+                AsyncImage(
+                    model = product.image,
+                    contentDescription = "Image of product ${product.title}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentScale = ContentScale.Fit
+                )
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Toggle Favorite",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = product.title,
@@ -334,76 +342,62 @@ fun ProductItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(
-    productId: Int,
-    onBack: () -> Unit
+    productId: Int
 )
 {
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {Text("Product Detail")},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Localized description")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        var product by remember { mutableStateOf<Product?>(null) }
-        var isLoading by remember { mutableStateOf(true) }
-        var error by remember { mutableStateOf<String?>(null) }
+    var product by remember { mutableStateOf<Product?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-        LaunchedEffect(productId) {
-            isLoading = true
-            try {
-                product = RetrofitInstance.fakeStoreService.getProductById(productId)
-            } catch (_: Exception) {
-                error = "Failed to load product details."
-            } finally {
-                isLoading = false
-            }
+    LaunchedEffect(productId) {
+        isLoading = true
+        try {
+            product = RetrofitInstance.fakeStoreService.getProductById(productId)
+        } catch (_: Exception) {
+            error = "Failed to load product details."
+        } finally {
+            isLoading = false
         }
+    }
 
-        Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (error != null) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
-            } else if (product != null) {
-                Column(
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else if (error != null) {
+            Text(error!!, color = MaterialTheme.colorScheme.error)
+        } else if (product != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                AsyncImage(
+                    model = product!!.image,
+                    contentDescription = "Image of product ${product!!.title}",
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    AsyncImage(
-                        model = product!!.image,
-                        contentDescription = "Image of product ${product!!.title}",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(280.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(product!!.title, style = MaterialTheme.typography.headlineSmall)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    RatingStars(
-                        rate = product!!.rating.rate,
-                        count = product!!.rating.count,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "${product!!.price} €",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Description", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(product!!.description, style = MaterialTheme.typography.bodyLarge)
-                }
+                        .fillMaxWidth()
+                        .height(280.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(product!!.title, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                RatingStars(
+                    rate = product!!.rating.rate,
+                    count = product!!.rating.count,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "${product!!.price} €",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Description", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(product!!.description, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }

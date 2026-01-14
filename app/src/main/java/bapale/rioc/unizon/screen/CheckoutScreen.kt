@@ -29,7 +29,7 @@ fun CheckoutScreen(cartViewModel: CartViewModel, navController: NavController) {
             Text("Order Summary", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(24.dp))
 
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),) {
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Total items:", style = MaterialTheme.typography.bodyLarge)
@@ -47,9 +47,7 @@ fun CheckoutScreen(cartViewModel: CartViewModel, navController: NavController) {
             Button(
                 onClick = {
                     cartViewModel.placeOrder {
-                        // on success
                         navController.navigate("order_history") {
-                            // Clear back stack up to products screen
                             popUpTo("products") { inclusive = false }
                         }
                     }
