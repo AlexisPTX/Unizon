@@ -71,17 +71,18 @@ L'application est développée en essayant de suivre les pratiques modernes pour
 
 Ce projet a été une opportunité pour mettre en pratique les concepts clés de l'écosystème Android. Voici quelques retours sur les défis rencontrés et les leçons apprises.
 
-### Difficulté de navigation entre les écrans
+### La complexité des ViewModels et de la Navigation
 
-Au début, la navigation entre plusieurs écrans était assez floue tout comme le concept. Cependant en regardant sur les forums, la documentation et avec l’aide de l’IA, nous avons pu progresser dans le développement des fonctionnalités en lien avec ce concept.
+La mise en place d'une architecture réactive avec `ViewModel` et `Navigation Compose` est puissante, mais présente des défis conceptuels importants.
 
-### La complexité de la mise en place des ViewModels
+- **La gestion de l'état (`StateFlow`) :** Le principal défi n'est pas de créer la classe `ViewModel`, mais de bien modéliser l'état qu'elle expose. L'utilisation de `StateFlow` pour communiquer les données de manière réactive à l'interface est efficace, mais demande de la rigueur.
+    - **Point bloquant :** Une erreur fréquente est de vouloir exposer trop d'états (`StateFlow`) différents et indépendants. Il faut trouver un équilibre pour regrouper les données liées (ex: `cartItems`, `cartTotalPrice`, `cartItemCount` dans `CartViewModel`) en un ou plusieurs états cohérents, afin d'éviter des mises à jour de l'interface trop fréquentes et désynchronisées.
 
-Le `ViewModel` est un point important de l'architecture MVVM, mais sa mise en place au début était compliquée, mais avec l'aide de l'IA et de forums, nous avons compris petit à petit comment le mettre en place jusqu'à obtenir une structure fonctionnelle.
+- **Le cycle de vie et la portée (`viewModelScope`) :** Toutes les opérations asynchrones (appels réseau, requêtes BDD) doivent être lancées dans le `viewModelScope`. Oublier cette règle est une source de bugs difficiles à tracer, comme des fuites de mémoire ou des crashs, car la coroutine peut continuer de s'exécuter alors que l'écran et son `ViewModel` ont déjà été détruits.
 
-- **La gestion de l'état :** Le principal défi n'est pas de créer la classe, mais de bien gérer l'état qu'elle expose. L'utilisation de `StateFlow` pour communiquer les données de manière réactive à l'interface Compose est puissante, mais demande de la rigueur ce qui était cause d'erreurs fréquentes.
-Une erreur commise était de vouloir exposer trop d'états différents indépendamment. En me renseignant sur les forums, j'ai pu comprendre qu'il faut trouver un équilibre pour regrouper les données liées (ex : `cartItems`, `cartTotalPrice`, `cartItemCount` dans `CartViewModel`). Cela permet d'éviter de déclencher une mise à jour pour chaque variable une à une, au profit d'une mise à jour globale et cohérente de l'interface.
+- **La gestion de la pile de navigation (`Back Stack`) :** La navigation, notamment avec une barre inférieure, n'est pas triviale.
+Un bug avait lieu lors de la redirection vers l'historique après une commande. Le retour vers l'écran des produits ne fonctionnait plus correctement, c'est-à-dire que l'on voyait l'historique d'après commande plutôt que de voir la liste des produits. La solution a été de manipuler explicitement la pile de navigation (`back stack`) avec `popUpTo` pour s'assurer que l'état de la navigation reste propre et prévisible, en évitant l'empilement d'écrans qui ne devraient pas l'être.
 
-- **Le cycle de vie et la portée :** Toutes les opérations asynchrones (appels réseau, requêtes BDD) doivent être lancées dans le `viewModelScope` pour éviter des crashs fréquents que j'ai pu avoir, ce qu'il se passait, c'est que la coroutine continuait de s'exécuter alors que le ViewModel avait déjà été détruit.
+En conclusion, bien que ces architectures demandent un investissement initial en termes de configuration et de compréhension, elles permettent de construire une base applicative facilement modifiable et améliorable.
 
 En conclusion, bien que ces architectures demandent un investissement initial en termes de configuration et de compréhension, elles permettent de construire une base applicative facilement modifiable et améliorable.

@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import bapale.rioc.unizon.BottomNavItem
 import bapale.rioc.unizon.viewmodel.CartViewModel
 import java.text.DecimalFormat
 
@@ -47,8 +49,10 @@ fun CheckoutScreen(cartViewModel: CartViewModel, navController: NavController) {
             Button(
                 onClick = {
                     cartViewModel.placeOrder {
-                        navController.navigate("order_history") {
-                            popUpTo("products") { inclusive = false }
+                        navController.navigate(BottomNavItem.History.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
                         }
                     }
                 },

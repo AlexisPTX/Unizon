@@ -94,7 +94,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { navController.navigate("cart") }) {
+                                IconButton(onClick = {
+                                    navController.navigate("cart") {
+                                        launchSingleTop = true
+                                    }
+                                }) {
                                     BadgedBox(badge = {
                                         if (cartItemsCount > 0) Badge { Text("$cartItemsCount") }
                                     }) {
@@ -111,12 +115,12 @@ class MainActivity : ComponentActivity() {
                                 NavigationBarItem(
                                     selected = isSelected,
                                     onClick = {
-                                        navController.navigate(item.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
+                                        if (currentRoute != item.route) {
+                                            navController.navigate(item.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                }
+                                                launchSingleTop = true
                                             }
-                                            launchSingleTop = true
-                                            restoreState = true
                                         }
                                     },
                                     icon = {
