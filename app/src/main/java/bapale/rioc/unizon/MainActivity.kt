@@ -1,10 +1,10 @@
 package bapale.rioc.unizon
 
-import bapale.rioc.unizon.screen.CartScreen
-import bapale.rioc.unizon.screen.CheckoutScreen
-import bapale.rioc.unizon.screen.OrderHistoryScreen
-import bapale.rioc.unizon.screen.ProductDetailScreen
-import bapale.rioc.unizon.screen.ProductsScreen
+import bapale.rioc.unizon.ui.screen.CartScreen
+import bapale.rioc.unizon.ui.screen.CheckoutScreen
+import bapale.rioc.unizon.ui.screen.OrderHistoryScreen
+import bapale.rioc.unizon.ui.screen.ProductDetailScreen
+import bapale.rioc.unizon.ui.screen.ProductsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +24,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -40,8 +41,10 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import bapale.rioc.unizon.screen.FavoritesScreen
+import bapale.rioc.unizon.ui.screen.FavoritesScreen
+import bapale.rioc.unizon.di.AppModule
 import bapale.rioc.unizon.viewmodel.FavoritesViewModel
+import androidx.lifecycle.ViewModel
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Products : BottomNavItem("products", Icons.Default.Storefront, "Products")
@@ -61,7 +64,12 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val cartViewModel: CartViewModel = viewModel()
-                val favoritesViewModel: FavoritesViewModel = viewModel()
+                val favoritesViewModel: FavoritesViewModel = viewModel(
+                    factory = FavoritesViewModel.Factory(
+                        AppModule.provideFavoriteRepository(applicationContext)
+                    )
+                )
+
                 val cartItemsCount by cartViewModel.cartItemCount.collectAsState()
                 val favoritesCount by favoritesViewModel.favoritesCount.collectAsState()
 

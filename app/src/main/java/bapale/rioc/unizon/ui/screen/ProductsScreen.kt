@@ -1,8 +1,8 @@
-package bapale.rioc.unizon.screen
+package bapale.rioc.unizon.ui.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import bapale.rioc.unizon.api.RetrofitInstance
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,11 +52,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import bapale.rioc.unizon.api.Product
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.createSavedStateHandle
+import bapale.rioc.unizon.di.AppModule
+import bapale.rioc.unizon.domain.model.Product
 import bapale.rioc.unizon.viewmodel.FavoritesViewModel
 import bapale.rioc.unizon.viewmodel.CartViewModel
+import bapale.rioc.unizon.ui.viewmodel.ProductDetailViewModel
+import bapale.rioc.unizon.ui.viewmodel.ProductsViewModel
 import coil.compose.AsyncImage
-import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Star
@@ -66,6 +71,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
 
 enum class SortOption(val displayName: String) {
@@ -77,70 +83,27 @@ enum class SortOption(val displayName: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsScreen(cartViewModel: CartViewModel, favoritesViewModel: FavoritesViewModel, navController: NavController) {
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var categories by remember { mutableStateOf<List<String>>(emptyList()) }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var sortOption by remember { mutableStateOf(SortOption.NONE) }
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+fun ProductsScreen(
+    cartViewModel: CartViewModel,
+    favoritesViewModel: FavoritesViewModel,
+    navController: NavController,
+    productsViewModel: ProductsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ProductsViewModel(AppModule.provideProductRepository()) as T
+            }
+        }
+    )
+) {
+    val state = productsViewModel.state
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val cartItems by cartViewModel.cartItems.collectAsState()
     val favoriteIds by favoritesViewModel.favoriteProductIds.collectAsState()
     val listState = rememberLazyListState()
-
-    fun loadProducts(category: String? = selectedCategory) {
-        scope.launch {
-            isLoading = true
-            error = null
-            try {
-                // Charger les produits en fonction de la catégorie sélectionnée
-                products = if (category == null) {
-                    RetrofitInstance.fakeStoreService.getProducts()
-                } else {
-                    RetrofitInstance.fakeStoreService.getProductsByCategory(
-                        category
-                    )
-                }
-            } catch (_: Exception) {
-                val errorMessage = "Error loading products"
-                error = errorMessage
-                snackbarHostState.showSnackbar(errorMessage)
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    val displayedProducts by remember(products, sortOption) {
-        mutableStateOf(
-            when (sortOption) {
-                SortOption.PRICE_ASC -> products.sortedBy { it.price }
-                SortOption.PRICE_DESC -> products.sortedByDescending { it.price }
-                SortOption.RATING_DESC -> products.sortedByDescending { it.rating.rate }
-                SortOption.NONE -> products
-            }
-        )
-    }
-
-    fun loadCategories() {
-        scope.launch {
-            try {
-                categories = RetrofitInstance.fakeStoreService.getCategories()
-            } catch (_: Exception) {
-                snackbarHostState.showSnackbar("Error loading categories")
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        loadCategories()
-        loadProducts()
-    }
+    val displayedProducts = productsViewModel.getDisplayedProducts()
 
     LaunchedEffect(displayedProducts) {
-        // Fait remonter la liste en haut de manière animée à chaque fois que les filtres sont modifiés.
         if (displayedProducts.isNotEmpty()) {
             listState.animateScrollToItem(0)
         }
@@ -151,31 +114,28 @@ fun ProductsScreen(cartViewModel: CartViewModel, favoritesViewModel: FavoritesVi
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) { // The main column for the screen
             FilterBar(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { category ->
-                    selectedCategory = category
-                    loadProducts(category)
-                },
-                onSortSelected = { sortOption = it }
+                categories = state.categories,
+                selectedCategory = state.selectedCategory,
+                onCategorySelected = { productsViewModel.onCategorySelected(it) },
+                onSortSelected = { productsViewModel.onSortSelected(it) }
             )
             PullToRefreshBox(
-                isRefreshing = isLoading,
-                onRefresh = { loadProducts() },
+                isRefreshing = state.isLoading,
+                onRefresh = { productsViewModel.loadProducts() },
                 modifier = Modifier.fillMaxSize()
             ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = if (displayedProducts.isEmpty() && !isLoading) Arrangement.Center else Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = if (displayedProducts.isEmpty() && !isLoading) Alignment.CenterHorizontally else Alignment.Start
+                    verticalArrangement = if (displayedProducts.isEmpty() && !state.isLoading) Arrangement.Center else Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = if (displayedProducts.isEmpty() && !state.isLoading) Alignment.CenterHorizontally else Alignment.Start
                 ) {
-                    if (displayedProducts.isEmpty() && !isLoading) {
+                    if (displayedProducts.isEmpty() && !state.isLoading) {
                         item {
-                            if (error != null) {
+                            if (state.error != null) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = error!!, color = MaterialTheme.colorScheme.error)
+                                    Text(text = state.error, color = MaterialTheme.colorScheme.error)
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
                             } else {
@@ -342,30 +302,25 @@ fun ProductItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(
-    productId: Int
-)
-{
-    var product by remember { mutableStateOf<Product?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(productId) {
-        isLoading = true
-        try {
-            product = RetrofitInstance.fakeStoreService.getProductById(productId)
-        } catch (_: Exception) {
-            error = "Failed to load product details."
-        } finally {
-            isLoading = false
+    productId: Int,
+    viewModel: ProductDetailViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                val savedStateHandle = extras.createSavedStateHandle()
+                return ProductDetailViewModel(AppModule.provideProductRepository(), savedStateHandle) as T
+            }
         }
-    }
+    )
+) {
+    val state = viewModel.state
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (isLoading) {
+        if (state.isLoading) {
             CircularProgressIndicator()
-        } else if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error)
-        } else if (product != null) {
+        } else if (state.error != null) {
+            Text(state.error, color = MaterialTheme.colorScheme.error)
+        } else if (state.product != null) {
+            val product = state.product
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -373,31 +328,31 @@ fun ProductDetailScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 AsyncImage(
-                    model = product!!.image,
-                    contentDescription = "Image of product ${product!!.title}",
+                    model = product.image,
+                    contentDescription = "Image of product ${product.title}",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(280.dp),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(product!!.title, style = MaterialTheme.typography.headlineSmall)
+                Text(product.title, style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 RatingStars(
-                    rate = product!!.rating.rate,
-                    count = product!!.rating.count,
+                    rate = product.rating.rate,
+                    count = product.rating.count,
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "${product!!.price} €",
+                    text = "${product.price} €",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Description", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(product!!.description, style = MaterialTheme.typography.bodyLarge)
+                Text(product.description, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }

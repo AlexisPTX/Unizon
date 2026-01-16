@@ -84,5 +84,3 @@ La mise en place d'une architecture réactive avec `ViewModel` et `Navigation Co
 Un bug avait lieu lors de la redirection vers l'historique après une commande. Le retour vers l'écran des produits ne fonctionnait plus correctement, c'est-à-dire que l'on voyait l'historique d'après commande plutôt que de voir la liste des produits. La solution a été de manipuler explicitement la pile de navigation (`back stack`) avec `popUpTo` pour s'assurer que l'état de la navigation reste propre et prévisible, en évitant l'empilement d'écrans qui ne devraient pas l'être.
 
 En conclusion, bien que ces architectures demandent un investissement initial en termes de configuration et de compréhension, elles permettent de construire une base applicative facilement modifiable et améliorable.
-
-En conclusion, bien que ces architectures demandent un investissement initial en termes de configuration et de compréhension, elles permettent de construire une base applicative facilement modifiable et améliorable.

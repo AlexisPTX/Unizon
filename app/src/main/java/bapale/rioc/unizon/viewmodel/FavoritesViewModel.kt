@@ -1,30 +1,34 @@
 package bapale.rioc.unizon.viewmodel
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import bapale.rioc.unizon.api.Product
-import bapale.rioc.unizon.data.AppDatabase
-import bapale.rioc.unizon.data.FavoriteItem
+import bapale.rioc.unizon.domain.model.Product
+import bapale.rioc.unizon.domain.repository.FavoriteRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class FavoritesViewModel(application: Application) : AndroidViewModel(application) {
+class FavoritesViewModel(
+    private val favoriteRepository: FavoriteRepository
+) : ViewModel() {
 
-    private val favoriteDao = AppDatabase.getDatabase(application).favoriteDao()
+    class Factory(private val favoriteRepository: FavoriteRepository) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return FavoritesViewModel(favoriteRepository) as T
+        }
+    }
 
-    val favoriteProductIds: StateFlow<Set<Int>> = favoriteDao.getAllFavorites()
-        .map { it.map { favorite -> favorite.productId }.toSet() }
+    val favoriteProductIds: StateFlow<Set<Int>> = favoriteRepository.getFavoriteProductIds()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptySet()
         )
 
-    val favoritesCount: StateFlow<Int> = favoriteProductIds.map { it.size }
+    val favoritesCount: StateFlow<Int> = favoriteRepository.getFavoritesCount()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -34,9 +38,9 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     fun toggleFavorite(product: Product) {
         viewModelScope.launch {
             if (favoriteProductIds.value.contains(product.id)) {
-                favoriteDao.removeFavorite(product.id)
+                favoriteRepository.removeFavorite(product)
             } else {
-                favoriteDao.addFavorite(FavoriteItem(productId = product.id))
+                favoriteRepository.addFavorite(product)
             }
         }
     }

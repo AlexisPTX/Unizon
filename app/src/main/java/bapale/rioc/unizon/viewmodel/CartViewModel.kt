@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.room.withTransaction
 import androidx.lifecycle.viewModelScope
-import bapale.rioc.unizon.api.Product
+import bapale.rioc.unizon.domain.model.Product
 import bapale.rioc.unizon.data.AppDatabase
 import bapale.rioc.unizon.data.CartItem
 import bapale.rioc.unizon.data.Order
